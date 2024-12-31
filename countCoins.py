@@ -1,110 +1,58 @@
 import cv2
+import cvzone
 import numpy as np
-from scipy.ndimage import distance_transform_edt
-from skimage.feature import peak_local_max
-from scipy import ndimage as ndi
-from skimage.segmentation import watershed
 
-# Read the target image
-img = cv2.imread('coins.jpg')
-cv2.imshow("Original Image", img)
-cv2.waitKey(0)
+# Camera connection and size visualization
+cap = cv2.VideoCapture(1)
+cap.set(3, 640)
+cap.set(4, 480)
 
-# Convert to grayscale
-img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-cv2.imshow('Grayscale Image', img_gray)
-cv2.waitKey(0)
+def empty(a):
+    pass
 
-# Apply Gaussian smoothing
-img_smooth = cv2.GaussianBlur(img_gray, (5, 5), 2.5)
+# Threshold and minArea slider
+cv2.namedWindow("Settings")
+cv2.resizeWindow("Settings", 640, 240)
+cv2.createTrackbar("Threshold1", "Settings", 31, 255, empty)
+cv2.createTrackbar("Threshold2", "Settings", 35, 255, empty)
+cv2.createTrackbar("MinArea", "Settings", 37, 500, empty)  # MinArea slider
 
-# Convert to binary image using Otsu thresholding
-_, BW = cv2.threshold(img_smooth, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-cv2.imshow('Binary Image', BW)
-cv2.waitKey(0)
+def preProcessing(img):
+    imgPre = cv2.GaussianBlur(img, (5, 5), 3)
+    thresh1 = cv2.getTrackbarPos("Threshold1", "Settings")
+    thresh2 = cv2.getTrackbarPos("Threshold2", "Settings")
+    imgPre = cv2.Canny(imgPre, thresh1, thresh2)
+    kernel = np.ones((2, 2), np.uint8)  # dilation for bigger contours
+    imgPre = cv2.dilate(imgPre, kernel, iterations=1)
+    imgPre = cv2.morphologyEx(imgPre, cv2.MORPH_CLOSE, kernel)
+    return imgPre
 
-# Complement the image
-BW_complement = cv2.bitwise_not(BW)
-cv2.imshow('Complemented Binary Image', BW_complement)
-cv2.waitKey(0)
+while True:
+    success, img = cap.read()
+    if not success:
+        break
 
-# Fill holes in the complement image
-BW_filled = ndi.binary_fill_holes(BW_complement).astype(np.uint8) * 255
-cv2.imshow('Filled Binary Image', BW_filled)
-cv2.waitKey(0)
+    imgPre = preProcessing(img)
 
-# Distance Transform
-D = distance_transform_edt(BW_filled)
-cv2.imshow('Distance Transform', (D / D.max() * 255).astype(np.uint8))
-cv2.waitKey(0)
+    # Get the minArea value from the trackbar
+    minArea = cv2.getTrackbarPos("MinArea", "Settings")
 
-# Marker-based Watershed Segmentation
-# Create markers using regional maxima (peaks)
-peaks = peak_local_max(D, labels=BW_filled, footprint=np.ones((3, 3)), num_peaks_per_label=1)
+    # Find contours and filter by minArea
+    imgContours, conFound = cvzone.findContours(img, imgPre, minArea=minArea)
 
-# Debugging: Check the detected peaks
-print(f"Number of peaks detected: {len(peaks)}")
-print(f"First few peak coordinates: {peaks[:5]}")
+    # Number of coins detected
+    coinCount = len(conFound)
 
-# Create markers array, initialize with zeros, then set the peaks to a unique value
-markers = np.zeros_like(BW_filled, dtype=np.int32)
+    # Stack images for visualization
+    imgStacked = cvzone.stackImages([img, imgPre, imgContours], 2, 0.75)
 
-# Assign marker values to the peaks
-for i, peak in enumerate(peaks):
-    markers[peak[0], peak[1]] = i + 1  # Each peak gets a unique marker value
+    # Display the coin count on the stacked image
+    cv2.putText(imgStacked, f"Coins Detected: {coinCount}", (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-# Debugging: Check the markers image
-cv2.imshow('Markers Image', markers.astype(np.uint8) * 40)  # Display markers scaled for visibility
-cv2.waitKey(0)
+    # Show the result
+    cv2.imshow("Image", imgStacked)
+    if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to exit the loop
+        break
 
-# Modify the distance transform for watershed
-D_neg = -D  # Negative distance for watershed
-
-# Perform watershed segmentation
-segmentation = watershed(D_neg, markers, mask=BW_filled)
-
-# Debugging: Check segmentation results
-cv2.imshow('Segmentation Result', segmentation.astype(np.uint8) * 40)  # Highlight regions
-cv2.waitKey(0)
-
-# Create segmented binary mask
-BW_seg = np.zeros_like(BW_filled, dtype=np.uint8)
-BW_seg[segmentation > 0] = 255
-
-cv2.imshow('Watershed Segmentation', BW_seg)
-cv2.waitKey(0)
-
-cv2.destroyAllWindows()
-
-# Remove small objects (noise) using connected components
-threshold = 2500  # Threshold for object area size
-num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(BW_seg, connectivity=8)
-
-# Initialize the final output binary image
-BW_final = np.zeros_like(BW_seg)
-
-# Filter objects based on area size
-for i in range(1, num_labels):  # Skip the background label 0
-    if stats[i, cv2.CC_STAT_AREA] > threshold:
-        BW_final[labels == i] = 255
-
-# Count the number of separated objects
-num_objects = np.sum([1 for i in range(1, num_labels) if stats[i, cv2.CC_STAT_AREA] > threshold])
-print(f'The total number of objects are: {num_objects}')
-
-# Display the final segmented image after area filtering
-cv2.imshow('Final Segmentation After Area Filtering', BW_final)
-cv2.waitKey(0)
-
-# Add text annotation to display the total number of objects
-font = cv2.FONT_HERSHEY_SIMPLEX
-position = (10, 30)
-font_scale = 1
-font_color = (0, 0, 255)  # Red color
-thickness = 2
-text = f'Total Objects: {num_objects}'
-cv2.putText(img, text, position, font, font_scale, font_color, thickness)
-cv2.imshow('Final Output with Annotations', img)
-cv2.waitKey(0)
-
+cap.release()
 cv2.destroyAllWindows()
