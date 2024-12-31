@@ -1,7 +1,8 @@
 # objectCounting
 Object Counting using Image Processing Toolbox
-V1.0 Counting of separated objects using Connected Components (bwconncomp)
+V0.0 Counting of separated objects using Connected Components (bwconncomp)
 
 Next Iteration
-V1.1
-Object Counting of Overlap Objects using Image Processing Toolbox 
+Object Counting 
+V0.1 Object Counting of Overlapped Objects using Same before Algorithm + Distance Transform and Watershed Segmentation. Validated functionality in before images.
+
