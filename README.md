@@ -16,4 +16,4 @@ The algorithm is explained briefly in the next flow diagram, where the rectangle
 And the result for V0.1 is the following: 
 ![finalDisplay](https://github.com/user-attachments/assets/ee1d7915-79c5-4389-af71-b6b06136f5b2)
 
-Next iteration, V0.2 will focus on adaptive thresholding to better differentiate and segmentate images.
+Next iteration, V0.2 will focus on next functionality for Real-Time Tracking Systems
