@@ -1,0 +1,72 @@
+%Marker Controlled Watershed Segmentation
+%Image Processing Toolbox Example
+
+% Step 1. Read Image and Convert it to Grayscale
+rgb = imread("pears.png");
+I = im2gray(rgb);
+imshow(I)
+
+% Step 2. Use Gradient Magnitude as Segmentation Function
+%Gradient Magnitude measures how strong is the change in image intensity
+gmag = imgradient(I);
+imshow(gmag,[])
+title("Gradient Magnitude")
+
+% Step 3. Mark Foreground Objects
+
+%Opening technique
+se = strel("disk",20);
+Io = imopen(I,se);
+imshow(Io)
+title("Opening")
+
+%Opening-by-reconstruction technique
+Ie = imerode(I,se);
+Iobr = imreconstruct(Ie,I);
+imshow(Iobr)
+title("Opening-by-reconstruction")
+
+%Opening and closing technique
+Ioc = imclose(Io,se);
+imshow(Ioc)
+title("Opening-Closing")
+
+%imdilate and imreconstruct function with reconstruction
+Iobrd = imdilate(Iobr,se);
+Iobrcbr = imreconstruct(imcomplement(Iobrd),imcomplement(Iobr));
+Iobrcbr = imcomplement(Iobrcbr);
+imshow(Iobrcbr)
+title("Opening-Closing by Reconstruction")
+
+%Calculate regional maxima of Iobrcbr for foreground markers
+fgm = imregionalmax(Iobrcbr);
+imshow(fgm)
+title("Regional Maxima of Opening-Closing by Reconstruction")
+
+%Result interpretaron with superposition with original image
+I2 = labeloverlay(I,fgm);
+imshow(I2)
+title("Regional Maxima Superimposed on Original Image")
+
+%Closing and erosion for edge cleaning and marker blobs shrink
+se2 = strel(ones(5,5));
+fgm2 = imclose(fgm,se2);
+fgm3 = imerode(fgm2,se2);
+
+%bwareaopen to remove small places of pixels
+fgm4 = bwareaopen(fgm3,20);
+I3 = labeloverlay(I,fgm4);
+imshow(I3)
+title("Modified Regional Maxima Superimposed on Original Image")
+
+%Step 4. Compute Background Markers
+bw = imbinarize(Iobrcbr);
+imshow(bw)
+title("Thresholded Opening-Closing by Reconstruction")
+
+%Watershed transfrom to ridge lines and segmentation
+D = bwdist(bw)
+DL = watershed(D);
+bgm = DL == 0;
+IMSHOW(bgm)
+title("Watershed Ridge Lines")
