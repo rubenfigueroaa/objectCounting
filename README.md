@@ -1,4 +1,6 @@
 # objectCounting
+
+v0.3. This repository will be separated, since I am also working on Cv2 and mediapipe with python, plus more advanced algorithms inside Matlab for specific image processing techniques, it will have two folders mainly, one for Python, with more Real Time Tracking Techniques, and MATLAB, for more advanced image processing algorithms
 v0.2 Based on Murtaza's Workshop, the object counting transitions to Real Time Tracking Systems using Python via Pycharm IDE. The libraries needed are cv2, cvzone and numpy. This iteration provides a groundwork for computer vision algorithms and their accurate processing in real time. Major documentation relies on sliders for the threshold and minArea contour, as well as improving camera equipment due to blurriness.
 Here is a result with 6 coins: 
 ![RealTime](https://github.com/user-attachments/assets/e197e4a3-c376-4c5a-a644-4dbf2c8145ea)
